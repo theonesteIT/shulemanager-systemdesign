@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Shule+ Manager — System Architecture v1.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+/* ── Reset & Base ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:15px}
+body{font-family:'Inter',sans-serif;background:#F5F6FA;color:#1A1D2E;line-height:1.6;min-height:100vh}
+
+/* ── Design Tokens ── */
+:root{
+  --amber:#FCB038;--amber-dark:#BA7517;--amber-light:#FFF3D0;--amber-mid:#F5A020;
+  --navy:#000435;--navy-mid:#0A1060;--navy-light:#E8EBF7;
+  --white:#FFFFFF;
+  --gray-50:#F5F6FA;--gray-100:#ECEEF5;--gray-200:#D8DBE8;--gray-400:#9099B8;--gray-600:#5A6080;--gray-800:#2A2D3E;
+  --green:#0E8A5F;--green-light:#E0F5ED;
+  --blue:#1A5FBE;--blue-light:#E6EEF9;
+  --purple:#5B4DC8;--purple-light:#ECEAFF;
+  --coral:#C94020;--coral-light:#FAEAE5;
+  --teal:#0B7A6B;--teal-light:#E0F4F1;
+  --pink:#A83070;--pink-light:#F5E0EE;
+  --radius-sm:6px;--radius-md:10px;--radius-lg:14px;--radius-xl:20px;
+  --shadow-sm:0 1px 3px rgba(0,4,53,.06),0 1px 2px rgba(0,4,53,.04);
+  --shadow-md:0 4px 16px rgba(0,4,53,.08),0 2px 6px rgba(0,4,53,.05);
+  --shadow-lg:0 12px 40px rgba(0,4,53,.12),0 4px 12px rgba(0,4,53,.07);
+}
+
+/* ── Sidebar Layout ── */
+.layout{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+.sidebar{background:var(--navy);position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column}
+.sidebar::-webkit-scrollbar{width:4px}
+.sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:4px}
+.content{overflow-y:auto;padding:48px 52px;max-width:960px}
+
+/* ── Sidebar Brand ── */
+.brand{padding:28px 24px 20px;border-bottom:1px solid rgba(255,255,255,.08)}
+.brand-logo{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.brand-dot{width:32px;height:32px;background:var(--amber);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:var(--navy);flex-shrink:0}
+.brand-name{font-size:16px;font-weight:700;color:var(--white);letter-spacing:-.02em}
+.brand-sub{font-size:11px;color:rgba(255,255,255,.45);letter-spacing:.04em;text-transform:uppercase}
+
+/* ── Sidebar Nav ── */
+.nav-section{padding:20px 16px 8px}
+.nav-label{font-size:10px;font-weight:600;color:rgba(255,255,255,.35);letter-spacing:.1em;text-transform:uppercase;padding:0 8px;margin-bottom:6px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--radius-sm);cursor:pointer;color:rgba(255,255,255,.6);font-size:13px;font-weight:400;transition:all .15s;text-decoration:none;margin-bottom:1px}
+.nav-item:hover{background:rgba(255,255,255,.07);color:var(--white)}
+.nav-item.active{background:rgba(252,176,56,.15);color:var(--amber);font-weight:500}
+.nav-item svg{width:15px;height:15px;flex-shrink:0;opacity:.7}
+.nav-item.active svg{opacity:1}
+.nav-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-left:auto}
+
+/* ── Content Sections ── */
+.section{display:none}
+.section.active{display:block}
+
+/* ── Page Header ── */
+.page-header{margin-bottom:36px}
+.page-eyebrow{font-size:11px;font-weight:600;color:var(--amber-dark);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.page-eyebrow::before{content:'';display:inline-block;width:20px;height:2px;background:var(--amber);border-radius:1px}
+.page-title{font-size:30px;font-weight:700;color:var(--navy);letter-spacing:-.03em;line-height:1.2;margin-bottom:10px}
+.page-desc{font-size:14px;color:var(--gray-600);max-width:580px;line-height:1.65}
+
+/* ── Cards ── */
+.card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:22px 24px;box-shadow:var(--shadow-sm)}
+.card+.card{margin-top:12px}
+.card-grid{display:grid;gap:14px}
+.card-grid-2{grid-template-columns:1fr 1fr}
+.card-grid-3{grid-template-columns:repeat(3,1fr)}
+.card-grid-4{grid-template-columns:repeat(4,1fr)}
+
+/* ── Badges ── */
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.badge-amber{background:var(--amber-light);color:var(--amber-dark)}
+.badge-navy{background:var(--navy-light);color:var(--navy)}
+.badge-blue{background:var(--blue-light);color:var(--blue)}
+.badge-green{background:var(--green-light);color:var(--green)}
+.badge-purple{background:var(--purple-light);color:var(--purple)}
+.badge-teal{background:var(--teal-light);color:var(--teal)}
+.badge-coral{background:var(--coral-light);color:var(--coral)}
+.badge-pink{background:var(--pink-light);color:var(--pink)}
+.badge-gray{background:var(--gray-100);color:var(--gray-600)}
+
+/* ── Section headings ── */
+.sec-title{font-size:11px;font-weight:600;color:var(--gray-400);letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px;margin-top:32px}
+.sec-title:first-child{margin-top:0}
+
+/* ── Highlight boxes ── */
+.callout{border-radius:var(--radius-md);padding:16px 20px;margin-bottom:22px;border-left:3px solid transparent}
+.callout-amber{background:var(--amber-light);border-left-color:var(--amber);color:#6B3D00}
+.callout-navy{background:var(--navy-light);border-left-color:var(--navy);color:var(--navy)}
+.callout-title{font-size:13px;font-weight:600;margin-bottom:4px}
+.callout-body{font-size:12.5px;line-height:1.6;opacity:.85}
+
+/* ── Suite headers ── */
+.suite-header{display:flex;align-items:center;gap:12px;padding:16px 20px;border-radius:var(--radius-lg);margin-bottom:12px;border:1px solid var(--gray-200)}
+.suite-accent{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.suite-name{font-size:15px;font-weight:600;color:var(--navy)}
+.suite-desc{font-size:12px;color:var(--gray-600);margin-top:1px}
+
+/* ── Module accordion ── */
+.module{border:1px solid var(--gray-200);border-radius:var(--radius-md);margin-bottom:8px;overflow:hidden;transition:box-shadow .2s}
+.module:hover{box-shadow:var(--shadow-sm)}
+.module-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;background:var(--white);user-select:none}
+.module-head:hover{background:var(--gray-50)}
+.module-head-left{display:flex;align-items:center;gap:10px}
+.module-num{width:22px;height:22px;border-radius:6px;background:var(--gray-100);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:var(--gray-600);flex-shrink:0}
+.module-name{font-size:13px;font-weight:500;color:var(--navy)}
+.module-chevron{font-size:12px;color:var(--gray-400);transition:transform .2s}
+.module-chevron.open{transform:rotate(180deg)}
+.module-body{display:none;padding:14px 16px;border-top:1px solid var(--gray-100);background:var(--gray-50)}
+.module-body.open{display:block}
+.module-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.module-sect-label{font-size:10px;font-weight:600;color:var(--gray-400);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+.feat-wrap{display:flex;flex-wrap:wrap;gap:5px}
+.feat-tag{font-size:11px;background:var(--white);border:1px solid var(--gray-200);border-radius:99px;padding:3px 10px;color:var(--gray-600)}
+.shared-tag{font-size:11px;background:var(--navy-light);border:none;border-radius:99px;padding:3px 10px;color:var(--navy-mid);font-weight:500}
+
+/* ── Service cards ── */
+.svc-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-md);padding:16px;display:flex;flex-direction:column;gap:8px;transition:box-shadow .15s}
+.svc-card:hover{box-shadow:var(--shadow-md)}
+.svc-icon-wrap{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;margin-bottom:4px}
+.svc-name{font-size:13px;font-weight:600;color:var(--navy)}
+.svc-desc{font-size:12px;color:var(--gray-600);line-height:1.5}
+.svc-used{font-size:11px;color:var(--gray-400)}
+
+/* ── Role table ── */
+.role-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.role-table th{text-align:left;font-size:11px;font-weight:600;color:var(--gray-400);letter-spacing:.06em;text-transform:uppercase;padding:8px 12px;border-bottom:2px solid var(--gray-200);white-space:nowrap;background:var(--gray-50)}
+.role-table td{padding:10px 12px;border-bottom:1px solid var(--gray-100);vertical-align:top}
+.role-table tbody tr:last-child td{border-bottom:none}
+.role-table tbody tr:hover td{background:var(--gray-50)}
+.role-table-wrap{border:1px solid var(--gray-200);border-radius:var(--radius-md);overflow:hidden;box-shadow:var(--shadow-sm)}
+
+/* ── Data scope viz ── */
+.scope-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:var(--radius-sm);margin-bottom:4px}
+.scope-label{font-size:12px;font-weight:500;min-width:130px}
+.scope-bar-wrap{flex:1;height:6px;background:var(--gray-100);border-radius:3px;overflow:hidden}
+.scope-bar{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--amber-dark),var(--amber))}
+.scope-note{font-size:11px;color:var(--gray-400);min-width:200px}
+
+/* ── Stack layers ── */
+.stack-layer{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border:1px solid var(--gray-200);border-radius:var(--radius-md);background:var(--white);margin-bottom:8px}
+.stack-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.stack-info{flex:1}
+.stack-name{font-size:13px;font-weight:600;color:var(--navy);margin-bottom:6px}
+.stack-chips{display:flex;flex-wrap:wrap;gap:5px}
+.stack-chip{font-size:11px;background:var(--gray-100);border-radius:99px;padding:3px 10px;color:var(--gray-800);font-weight:500}
+
+/* ── Timeline ── */
+.timeline{position:relative;padding-left:28px}
+.timeline::before{content:'';position:absolute;left:9px;top:4px;bottom:4px;width:1.5px;background:var(--gray-200)}
+.tl-step{position:relative;margin-bottom:20px}
+.tl-dot{position:absolute;left:-28px;top:3px;width:18px;height:18px;border-radius:50%;background:var(--amber);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--navy);border:2px solid var(--white);box-shadow:0 0 0 2px var(--amber)}
+.tl-title{font-size:13px;font-weight:600;color:var(--navy);margin-bottom:4px}
+.tl-desc{font-size:12.5px;color:var(--gray-600);line-height:1.6}
+code.inline{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--gray-100);padding:2px 6px;border-radius:4px;color:var(--navy-mid)}
+
+/* ── DB schema block ── */
+.code-block{background:var(--navy);border-radius:var(--radius-md);padding:20px 22px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.9;color:rgba(255,255,255,.75)}
+.code-block .kw{color:var(--amber)}
+.code-block .cm{color:rgba(255,255,255,.3)}
+.code-block .str{color:#98D8A0}
+
+/* ── Permission token ── */
+.token-block{background:var(--navy);border-radius:var(--radius-md);padding:20px 22px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.9}
+.token-block .key{color:var(--amber)}
+.token-block .val{color:#A8E6CF}
+.token-block .str{color:#FFD3A8}
+.token-block .com{color:rgba(255,255,255,.3)}
+
+/* ── Stats row ── */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
+.stat-card{background:var(--navy);border-radius:var(--radius-lg);padding:18px 20px;text-align:center;box-shadow:var(--shadow-md)}
+.stat-num{font-size:28px;font-weight:700;color:var(--amber);letter-spacing:-.04em;line-height:1}
+.stat-label{font-size:11px;color:rgba(255,255,255,.5);margin-top:5px;font-weight:400}
+
+/* ── Org type strip ── */
+.org-strip{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px}
+.org-pill{display:flex;align-items:center;gap:6px;background:var(--white);border:1px solid var(--gray-200);border-radius:99px;padding:6px 14px;font-size:12px;font-weight:500;color:var(--navy)}
+.org-pill-dot{width:8px;height:8px;border-radius:50%}
+
+/* ── Flow diagram ── */
+.flow-box{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-md);padding:12px 16px;text-align:center;font-size:12px;font-weight:500;position:relative}
+.flow-box.accent{background:var(--amber-light);border-color:var(--amber-dark);color:var(--amber-dark)}
+.flow-box.dark{background:var(--navy);color:var(--white);border-color:var(--navy-mid)}
+.flow-arrow{text-align:center;padding:4px 0;color:var(--gray-400);font-size:18px;line-height:1}
+.flow-row{display:grid;gap:8px;align-items:center}
+
+/* ── Responsive ── */
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{position:fixed;left:-280px;z-index:100;width:260px;transition:left .3s;height:100vh}
+  .sidebar.open{left:0}
+  .content{padding:24px 20px}
+  .card-grid-2,.card-grid-3,.card-grid-4{grid-template-columns:1fr}
+  .module-grid{grid-template-columns:1fr}
+  .stats-row{grid-template-columns:1fr 1fr}
+  .mobile-toggle{display:flex}
+}
+.mobile-toggle{display:none;align-items:center;gap:8px;padding:14px 20px;background:var(--navy);color:var(--white);font-size:14px;font-weight:500;cursor:pointer;border:none;width:100%}
+
+/* ── Print ── */
+@media print{
+  .sidebar{display:none}
+  .layout{grid-template-columns:1fr}
+  .content{padding:32px}
+  .section{display:block!important}
+  .module-body{display:block!important}
+}
+
+/* ── Divider ── */
+hr.div{border:none;border-top:1px solid var(--gray-200);margin:28px 0}
+
+/* ── Link ── */
+a.nav-ext{color:var(--amber);text-decoration:none;font-size:12px}
+a.nav-ext:hover{text-decoration:underline}
+
+/* Sidebar footer */
+.sidebar-footer{margin-top:auto;padding:16px 20px;border-top:1px solid rgba(255,255,255,.07);font-size:11px;color:rgba(255,255,255,.3)}
+</style>
+</head>
+<body>
+
+<button class="mobile-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')">
+  <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path d="M2 5h16M2 10h16M2 15h16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+  Shule+ Manager — Architecture
+</button>
+
+<div class="layout">
+
+<!-- ─── SIDEBAR ─── -->
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-logo">
+      <div class="brand-dot">S+</div>
+      <div>
+        <div class="brand-name">Shule+ Manager</div>
+      </div>
+    </div>
+    <div class="brand-sub">System Architecture v1.0</div>
+  </div>
+
+  <nav class="nav-section">
+    <div class="nav-label">Guide</div>
+    <a class="nav-item active" onclick="show('overview')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+      Overview
+    </a>
+    <a class="nav-item" onclick="show('suites')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h8M2 12h10"/></svg>
+      Suites &amp; Modules
+    </a>
+    <a class="nav-item" onclick="show('services')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 4v4l3 2"/></svg>
+      Core Services
+    </a>
+    <a class="nav-item" onclick="show('roles')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 14c0-3 2.5-5 5-5m4 1l2 2 3-3"/></svg>
+      Roles &amp; RBAC
+    </a>
+    <a class="nav-item" onclick="show('stack')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2l6 3-6 3-6-3 6-3zM2 8l6 3 6-3M2 12l6 3 6-3"/></svg>
+      Tech Stack
+    </a>
+    <a class="nav-item" onclick="show('flow')">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3h4v4H3zm6 6h4v4h-4zM5 7v2h4"/></svg>
+      Request Flow
+    </a>
+  </nav>
+
+  <nav class="nav-section">
+    <div class="nav-label">Suites</div>
+    <a class="nav-item" onclick="show('suites');scrollToSuite('edu')"><span class="nav-dot" style="background:#FCB038"></span>Education</a>
+    <a class="nav-item" onclick="show('suites');scrollToSuite('fin')"><span class="nav-dot" style="background:#3B8BD4"></span>Finance</a>
+    <a class="nav-item" onclick="show('suites');scrollToSuite('hr')"><span class="nav-dot" style="background:#1D9E75"></span>Human Resources</a>
+    <a class="nav-item" onclick="show('suites');scrollToSuite('ops')"><span class="nav-dot" style="background:#7F77DD"></span>Operations</a>
+    <a class="nav-item" onclick="show('suites');scrollToSuite('comm')"><span class="nav-dot" style="background:#D85A30"></span>Communication</a>
+    <a class="nav-item" onclick="show('suites');scrollToSuite('smart')"><span class="nav-dot" style="background:#D4537E"></span>Smart Technology</a>
+  </nav>
+
+  <div class="sidebar-footer">
+    React + TypeScript · Node.js/Express<br>MySQL · Multi-tenant SaaS
+  </div>
+</aside>
+
+<!-- ─── MAIN CONTENT ─── -->
+<main class="content">
+
+<!-- ════════ OVERVIEW ════════ -->
+<section id="sec-overview" class="section active">
+  <div class="page-header">
+    <div class="page-eyebrow">Developer Guide</div>
+    <h1 class="page-title">Shule+ Manager Ecosystem</h1>
+    <p class="page-desc">A multi-tenant SaaS platform for schools, NGOs, hospitals, businesses, churches, and government institutions. Organisations subscribe to the modules they need. All suites share a single authentication, permissions, and notification system.</p>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-num">6</div><div class="stat-label">Business Suites</div></div>
+    <div class="stat-card"><div class="stat-num">33</div><div class="stat-label">Modules</div></div>
+    <div class="stat-card"><div class="stat-num">14</div><div class="stat-label">Shared Services</div></div>
+    <div class="stat-card"><div class="stat-num">27</div><div class="stat-label">Roles</div></div>
+  </div>
+
+  <div class="callout callout-amber">
+    <div class="callout-title">Single Sign-On across all suites</div>
+    <div class="callout-body">Users log in once and access all subscribed modules based on their role, department, and data scope. JWT + refresh tokens are validated at the API Gateway before any business service is reached.</div>
+  </div>
+
+  <div class="sec-title">Organisations supported</div>
+  <div class="org-strip">
+    <div class="org-pill"><div class="org-pill-dot" style="background:#FCB038"></div>Schools</div>
+    <div class="org-pill"><div class="org-pill-dot" style="background:#3B8BD4"></div>Businesses</div>
+    <div class="org-pill"><div class="org-pill-dot" style="background:#1D9E75"></div>NGOs</div>
+    <div class="org-pill"><div class="org-pill-dot" style="background:#7F77DD"></div>Churches</div>
+    <div class="org-pill"><div class="org-pill-dot" style="background:#D85A30"></div>Hospitals</div>
+    <div class="org-pill"><div class="org-pill-dot" style="background:#D4537E"></div>Factories</div>
+    <div class="org-pill"><div class="org-pill-dot" style="background:#0B7A6B"></div>Government</div>
+  </div>
+
+  <div class="sec-title">Multi-tenancy model</div>
+  <div class="card card-grid card-grid-2" style="padding:0;overflow:hidden">
+    <div style="padding:20px 22px;border-right:1px solid var(--gray-100)">
+      <div style="font-size:13px;font-weight:600;color:var(--navy);margin-bottom:12px">Subscription flow</div>
+      <div class="flow-box dark" style="margin-bottom:6px">Organisation</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-box accent" style="margin-bottom:6px">Subscribed Modules</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-box" style="margin-bottom:6px">Roles &amp; Permissions</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-box" style="margin-bottom:6px">Users</div>
+    </div>
+    <div style="padding:20px 22px">
+      <div style="font-size:13px;font-weight:600;color:var(--navy);margin-bottom:12px">Key design decisions</div>
+      <div style="font-size:12.5px;display:flex;flex-direction:column;gap:10px">
+        <div><span style="font-weight:600;color:var(--navy)">Module gating</span><br><span style="color:var(--gray-600)">Unsubscribed module routes hidden in UI and blocked at API middleware</span></div>
+        <div><span style="font-weight:600;color:var(--navy)">Centralised notifications</span><br><span style="color:var(--gray-600)">No service sends SMS/email directly — all delegate to Notification Service</span></div>
+        <div><span style="font-weight:600;color:var(--navy)">Auto data scoping</span><br><span style="color:var(--gray-600)">Every DB query filtered by organization_id + data_scope automatically</span></div>
+        <div><span style="font-weight:600;color:var(--navy)">Full audit trail</span><br><span style="color:var(--gray-600)">Every create/edit/delete logged with user, module, record, timestamp</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec-title">Ecosystem map</div>
+  <div class="card">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+      <div style="padding:16px;border-right:1px solid var(--gray-100)">
+        <div style="font-size:12px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Core Platform (Shared by all)</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px">
+          <span class="badge badge-navy">Auth Service</span>
+          <span class="badge badge-navy">Authorization</span>
+          <span class="badge badge-navy">Organization</span>
+          <span class="badge badge-navy">Notifications</span>
+          <span class="badge badge-navy">File Store</span>
+          <span class="badge badge-navy">Audit Logs</span>
+          <span class="badge badge-navy">Reporting Engine</span>
+          <span class="badge badge-navy">Analytics</span>
+          <span class="badge badge-navy">Search</span>
+          <span class="badge badge-navy">Settings</span>
+          <span class="badge badge-navy">Workflow</span>
+          <span class="badge badge-navy">Communication</span>
+          <span class="badge badge-navy">Document Service</span>
+          <span class="badge badge-navy">API Gateway</span>
+        </div>
+      </div>
+      <div style="padding:16px">
+        <div style="font-size:12px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Business Services</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:2px;background:#FCB038;flex-shrink:0"></div><span style="font-size:12px">Education Service <span style="color:var(--gray-400)">— 9 modules</span></span></div>
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:2px;background:#3B8BD4;flex-shrink:0"></div><span style="font-size:12px">Finance Service <span style="color:var(--gray-400)">— 6 modules</span></span></div>
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:2px;background:#1D9E75;flex-shrink:0"></div><span style="font-size:12px">HR Service <span style="color:var(--gray-400)">— 4 modules</span></span></div>
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:2px;background:#7F77DD;flex-shrink:0"></div><span style="font-size:12px">Operations Service <span style="color:var(--gray-400)">— 5 modules</span></span></div>
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:2px;background:#D85A30;flex-shrink:0"></div><span style="font-size:12px">Communication Service <span style="color:var(--gray-400)">— 5 modules</span></span></div>
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:2px;background:#D4537E;flex-shrink:0"></div><span style="font-size:12px">Smart Technology Service <span style="color:var(--gray-400)">— 4 modules</span></span></div>
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:2px;background:#0B7A6B;flex-shrink:0"></div><span style="font-size:12px">RFID Service · AI Service · Marketplace</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ SUITES & MODULES ════════ -->
+<section id="sec-suites" class="section">
+  <div class="page-header">
+    <div class="page-eyebrow">33 Modules across 6 Suites</div>
+    <h1 class="page-title">Suites &amp; Modules</h1>
+    <p class="page-desc">Expand each module to see its features, which user roles can access it, and which shared core services it depends on.</p>
+  </div>
+
+  <div id="suites-container"></div>
+</section>
+
+<!-- ════════ CORE SERVICES ════════ -->
+<section id="sec-services" class="section">
+  <div class="page-header">
+    <div class="page-eyebrow">Shared Infrastructure</div>
+    <h1 class="page-title">Core Services</h1>
+    <p class="page-desc">14 platform services shared by all business suites. No business service duplicates their functionality — it always delegates. This keeps the system clean, auditable, and consistent.</p>
+  </div>
+  <div class="callout callout-navy">
+    <div class="callout-title">Architecture rule</div>
+    <div class="callout-body">Finance never sends an SMS. HR never writes its own file upload handler. Education never builds a PDF report renderer. Each business service calls the appropriate shared service. Violations create hidden duplication and break the audit trail.</div>
+  </div>
+  <div id="services-container" style="display:grid;grid-template-columns:1fr 1fr;gap:12px"></div>
+</section>
+
+<!-- ════════ ROLES & RBAC ════════ -->
+<section id="sec-roles" class="section">
+  <div class="page-header">
+    <div class="page-eyebrow">9 Levels · 27 Roles</div>
+    <h1 class="page-title">Roles &amp; Access Control</h1>
+    <p class="page-desc">Hierarchical RBAC with data scoping. Every user carries: Role + Permissions + Department + Data Scope. The API middleware auto-filters records — no manual scoping in business logic.</p>
+  </div>
+
+  <div class="sec-title">Data scope levels</div>
+  <div class="card" style="margin-bottom:24px">
+    <div id="scope-viz"></div>
+  </div>
+
+  <div class="sec-title">Permission token format</div>
+  <div class="token-block" style="margin-bottom:24px">
+    <span class="com">// Attached to req.user after JWT validation</span><br>
+    {<br>
+    &nbsp;&nbsp;<span class="key">"role"</span>: <span class="str">"HEAD_OF_STUDIES"</span>,<br>
+    &nbsp;&nbsp;<span class="key">"department"</span>: <span class="str">"O_LEVEL"</span>,<br>
+    &nbsp;&nbsp;<span class="key">"dataScope"</span>: <span class="str">"DEPARTMENT"</span>,<br>
+    &nbsp;&nbsp;<span class="key">"organizationId"</span>: <span class="str">"org_abc123"</span>,<br>
+    &nbsp;&nbsp;<span class="key">"permissions"</span>: [<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="val">"students.view"</span>, <span class="val">"attendance.view"</span>,<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="val">"reports.generate"</span>, <span class="val">"timetable.manage"</span><br>
+    &nbsp;&nbsp;],<br>
+    &nbsp;&nbsp;<span class="key">"subscribedModules"</span>: [<span class="val">"academics"</span>, <span class="val">"rfid"</span>, <span class="val">"finance"</span>]<br>
+    }
+  </div>
+
+  <div class="sec-title">All roles</div>
+  <div class="role-table-wrap">
+    <table class="role-table">
+      <thead><tr><th>Level</th><th>Role</th><th>Modules</th><th>Data Scope</th><th>Restrictions</th></tr></thead>
+      <tbody id="role-tbody"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ════════ TECH STACK ════════ -->
+<section id="sec-stack" class="section">
+  <div class="page-header">
+    <div class="page-eyebrow">Implementation</div>
+    <h1 class="page-title">Tech Stack</h1>
+    <p class="page-desc">React + TypeScript on the frontend with a shared component library. Node.js/Express + TypeScript on the backend. MySQL with Prisma ORM for data access.</p>
+  </div>
+  <div id="stack-container"></div>
+</section>
+
+<!-- ════════ REQUEST FLOW ════════ -->
+<section id="sec-flow" class="section">
+  <div class="page-header">
+    <div class="page-eyebrow">Step-by-step</div>
+    <h1 class="page-title">Request Flow</h1>
+    <p class="page-desc">How every API call travels through the system — from the React client to the database and back, including auth checks, scope filtering, and side-effects.</p>
+  </div>
+
+  <div class="sec-title">API request lifecycle</div>
+  <div class="timeline" id="flow-timeline"></div>
+
+  <hr class="div"/>
+
+  <div class="sec-title">Core database tables</div>
+  <div class="code-block">
+    <span class="kw">organizations</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">-- id, name, type, plan, created_at</span><br>
+    <span class="kw">organization_modules</span> <span class="cm">-- org_id, module_id, status, activated_at</span><br>
+    <span class="kw">users</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">-- id, org_id, role_id, dept_id, data_scope, email</span><br>
+    <span class="kw">roles</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">-- id, org_id, name, permissions[] (JSON)</span><br>
+    <span class="kw">departments</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">-- id, org_id, name, parent_dept_id</span><br>
+    <span class="kw">sessions</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">-- id, user_id, token, refresh_token, expires_at</span><br>
+    <span class="kw">audit_logs</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">-- id, user_id, action, module, record_id, ip, ts</span><br>
+    <span class="kw">notifications</span> &nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">-- id, org_id, user_id, channel, status, sent_at</span><br>
+    <span class="kw">files</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="cm">-- id, org_id, name, path, type, uploaded_by</span>
+  </div>
+
+  <hr class="div"/>
+
+  <div class="sec-title">Module subscription flow</div>
+  <div class="card">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;font-size:12.5px">
+      <div style="text-align:center;padding:12px"><div style="font-size:22px;margin-bottom:8px">1️⃣</div><div style="font-weight:600;color:var(--navy);margin-bottom:4px">Super Admin activates</div><div style="color:var(--gray-600)">Inserts row in <code class="inline">organization_modules</code> for this org + module</div></div>
+      <div style="text-align:center;padding:12px;border-left:1px solid var(--gray-100);border-right:1px solid var(--gray-100)"><div style="font-size:22px;margin-bottom:8px">2️⃣</div><div style="font-weight:600;color:var(--navy);margin-bottom:4px">Org Admin configures</div><div style="color:var(--gray-600)">Creates roles and assigns only permissions from subscribed modules</div></div>
+      <div style="text-align:center;padding:12px"><div style="font-size:22px;margin-bottom:8px">3️⃣</div><div style="font-weight:600;color:var(--navy);margin-bottom:4px">Users see their scope</div><div style="color:var(--gray-600)">Inactive module routes hidden in UI and 403'd at API</div></div>
+    </div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+const SUITES = [
+  {id:'edu',name:'Education Suite',color:'#FCB038',bg:'#FFF3D0',emoji:'🎓',desc:'Teaching, learning, students, and parents.',badge:'badge-amber',modules:[
+    {name:'Academic Management',roles:['Director','Registrar','Deputy Director','HOD','Teacher'],features:['Student Registration','Student Profiles','Student Promotion','Classes & Streams','Subjects','Examination Management','Marks Entry','Report Cards','Academic Analytics','Graduation Management'],shared:['Auth','Notification','File','Audit Log','Reporting','Workflow']},
+    {name:'Teacher Portal',roles:['Teacher','HOD','Deputy Director'],features:['My Classes','Timetable','Marks Entry','Attendance','Lesson Plans','Assignments','Academic Reports'],shared:['Auth','File','Notification']},
+    {name:'Parent Portal',roles:['Parent'],features:['Student Progress','Attendance Tracking','Fee Status','Academic Reports','Notifications','School Communication'],shared:['Auth','Notification','Communication']},
+    {name:'Student Discipline Management',roles:['Director','Deputy Director','Teacher','HOD'],features:['Discipline Cases','Rewards','Warnings','Suspensions','Parent Notifications','Discipline Reports'],shared:['Auth','Notification','Audit Log','Reporting']},
+    {name:'Smart Timetable',roles:['Director','Deputy Director','HOD'],features:['Teacher Timetable','Student Timetable','Classroom Allocation','Automatic Scheduling'],shared:['Auth','Settings']},
+    {name:'School Calendar',roles:['Director','Deputy Director','All Staff'],features:['Academic Calendar','School Events','Examinations','Holidays','Meetings'],shared:['Auth','Notification','Communication']},
+    {name:'Library Management',roles:['Librarian','Teacher','Student'],features:['Books','Borrowing','Returns','Fines','E-Library'],shared:['Auth','File','Audit Log']},
+    {name:'School Transport',roles:['Transport Manager','RFID Officer'],features:['Vehicles','Routes','Drivers','RFID Boarding','Transport Reports'],shared:['Auth','RFID Service','Notification','Reporting']},
+    {name:'School Canteen',roles:['Canteen Manager','RFID Officer'],features:['Meals','Meal Tracking','RFID Validation','Meal Reports','Nutrition Records'],shared:['Auth','RFID Service','Reporting']}
+  ]},
+  {id:'fin',name:'Finance Suite',color:'#3B8BD4',bg:'#E6EEF9',emoji:'💰',desc:'All financial operations.',badge:'badge-blue',modules:[
+    {name:'Finance Management',roles:['Finance Manager','Accountant'],features:['Income','Expenses','Receipts','Invoices','Payments','Cash Flow','Financial Reports'],shared:['Auth','Notification','Audit Log','Reporting','Workflow']},
+    {name:'Student Fee Collection',roles:['Accountant','Finance Manager'],features:['Fee Structures','Student Billing','Payments','Receipts','Outstanding Balances','Fee Analytics'],shared:['Auth','Notification','Audit Log','Reporting']},
+    {name:'Budget Management',roles:['Finance Manager','Director','Org Admin'],features:['Annual Budgets','Department Budgets','Budget Requests','Budget Approvals','Budget Revisions','Budget Tracking','Variance Reports'],shared:['Auth','Workflow','Audit Log','Reporting']},
+    {name:'Payroll Management',roles:['Payroll Officer','Finance Manager','HR Manager'],features:['Salary Processing','Deductions','Taxes / PAYE','RSSB / RAMA / CBHI','Payslips','Payroll Reports'],shared:['Auth','Notification','Audit Log','Reporting','Workflow']},
+    {name:'ShuleAvance — Salary Advances',roles:['Payroll Officer','Finance Manager'],features:['Salary Advances','Loan Requests','Approval Workflow','Repayment Tracking'],shared:['Auth','Workflow','Notification','Audit Log']},
+    {name:'Procurement Management',roles:['Procurement Manager','Finance Manager','Store Keeper'],features:['Purchase Requests','Requisition Orders','Purchase Orders','Supplier Management','Procurement Reports'],shared:['Auth','Workflow','Audit Log','Reporting','Notification']}
+  ]},
+  {id:'hr',name:'Human Resources Suite',color:'#1D9E75',bg:'#E0F5ED',emoji:'👥',desc:'People and workforce management.',badge:'badge-green',modules:[
+    {name:'HR Management',roles:['HR Manager','Org Admin','Director'],features:['Employee Profiles','Contracts','Recruitment','Staff Documents','Performance Reviews','Employee Self-Service'],shared:['Auth','File','Notification','Audit Log','Workflow']},
+    {name:'Leave Management',roles:['HR Manager','Leave Officer','All Staff'],features:['Leave Requests','Approvals','Leave Balance','Leave Reports'],shared:['Auth','Workflow','Notification','Audit Log']},
+    {name:'Attendance Management',roles:['Attendance Officer','HR Manager','Org Admin'],features:['Staff Attendance','Shift Management','Overtime','Attendance Reports'],shared:['Auth','RFID Service','Audit Log','Reporting']},
+    {name:'Teacher Management',roles:['Director','Deputy Director','HR Manager'],features:['Qualifications','Experience','Subject Allocation','Professional Development'],shared:['Auth','File','Audit Log']}
+  ]},
+  {id:'ops',name:'Operations Suite',color:'#7F77DD',bg:'#ECEAFF',emoji:'⚙️',desc:'Daily operations and organisational planning.',badge:'badge-purple',modules:[
+    {name:'Action Plan Management',roles:['Director','Operations Manager','Org Admin'],features:['Strategic Plans','Annual Action Plans','Activities','KPIs','Targets','Progress Tracking','Performance Reports'],shared:['Auth','Audit Log','Reporting','Analytics']},
+    {name:'Inventory Management',roles:['Store Keeper','Operations Manager'],features:['Stock In','Stock Out','Transfers','Warehouses','Inventory Reports'],shared:['Auth','Audit Log','Reporting','Notification']},
+    {name:'Asset Management',roles:['Asset Manager','Operations Manager'],features:['Asset Registration','Asset Tracking','Depreciation','Maintenance','Asset Disposal'],shared:['Auth','Audit Log','Reporting','File']},
+    {name:'Document Management',roles:['Org Admin','Director','All Staff'],features:['Policies','Contracts','Reports','File Storage','Digital Signatures','Version Control'],shared:['Auth','File','Document Service','Audit Log']},
+    {name:'Task & Workflow Management',roles:['All Roles'],features:['Tasks','Assignments','Follow-ups','Approvals','Workflow Tracking'],shared:['Auth','Workflow','Notification','Audit Log']}
+  ]},
+  {id:'comm',name:'Communication Suite',color:'#D85A30',bg:'#FAEAE5',emoji:'📢',desc:'Internal and external communication.',badge:'badge-coral',modules:[
+    {name:'Internal Communication',roles:['All Staff'],features:['Staff Messaging','Department Chats','Announcements','Discussion Groups'],shared:['Auth','Communication','Notification']},
+    {name:'Parent Communication',roles:['Communication Officer','Director','Teacher'],features:['SMS','Email','Push Notifications','Parent Messages'],shared:['Auth','Notification','Communication']},
+    {name:'Circular Wizard',roles:['Director','Communication Officer','Org Admin'],features:['Circular Generator','Templates','Translation','Distribution Tracking'],shared:['Auth','Document Service','Notification','File']},
+    {name:'Notification Center',roles:['Org Admin','Communication Officer'],features:['SMS Gateway','Email Gateway','Push Notifications','Automated Reminders'],shared:['Auth','Notification']},
+    {name:'School Mini Website',roles:['Org Admin','Communication Officer'],features:['Website Builder','News','Events','Gallery','Contact Forms','Admissions'],shared:['Auth','File','Document Service']}
+  ]},
+  {id:'smart',name:'Smart Technology Suite',color:'#D4537E',bg:'#F5E0EE',emoji:'🤖',desc:'Modern digital services and AI tools.',badge:'badge-pink',modules:[
+    {name:'RFID & Smart Card Management',roles:['RFID Officer','Security','Transport Manager'],features:['Smart Cards','Attendance','Access Control','Gate Management','Visitor Tracking'],shared:['Auth','Audit Log','Notification','Reporting']},
+    {name:'QR Code Management',roles:['RFID Officer','Admin'],features:['QR Attendance','QR Verification','Digital IDs'],shared:['Auth','Audit Log']},
+    {name:'AI Assistant — Babyeyi Wizard',roles:['Director','Org Admin','Communication Officer'],features:['Circular Generator','AI Report Writing','Budget Assistant','Policy Generator','Translation Assistant','School Insights'],shared:['Auth','Document Service','File','Audit Log']},
+    {name:'Analytics & Business Intelligence',roles:['Director','Finance Manager','Org Admin'],features:['Dashboards','KPIs','Charts','Predictive Analytics','Performance Monitoring'],shared:['Auth','Analytics','Reporting','Search']}
+  ]}
+];
+
+const SERVICES = [
+  {name:'Auth Service',emoji:'🔐',color:'#FCB038',bg:'#FFF3D0',desc:'JWT, SSO, refresh tokens, password reset, sessions, MFA (future). Every request starts here.',usedBy:'ALL services'},
+  {name:'Authorization',emoji:'🛡️',color:'#3B8BD4',bg:'#E6EEF9',desc:'Roles, permissions, access policies, module gating. Middleware on every API route.',usedBy:'ALL services'},
+  {name:'Organization Service',emoji:'🏛️',color:'#1D9E75',bg:'#E0F5ED',desc:'Multi-tenancy. Manages organizations, branches, departments. tables: organizations, branches, departments.',usedBy:'Auth, all business services'},
+  {name:'Notification Service',emoji:'🔔',color:'#D85A30',bg:'#FAEAE5',desc:'SMS (Africa\'s Talking), Email, Push, WhatsApp (future). Business services never send directly.',usedBy:'Finance, HR, Education, Comm…'},
+  {name:'File Service',emoji:'📎',color:'#7F77DD',bg:'#ECEAFF',desc:'All file uploads: student photos, contracts, PDFs. Single endpoint for every service.',usedBy:'Education, HR, Ops, Comm…'},
+  {name:'Audit Log Service',emoji:'📋',color:'#D4537E',bg:'#F5E0EE',desc:'Every create/update/delete logged. Fields: user_id, action, module, record_id, created_at.',usedBy:'ALL services'},
+  {name:'Reporting Service',emoji:'📊',color:'#854F0B',bg:'#FFF3D0',desc:'Shared PDF/Excel/CSV engine. Finance, HR, and Education all call this instead of building their own.',usedBy:'Finance, HR, Education, Ops'},
+  {name:'Analytics Service',emoji:'📈',color:'#185FA5',bg:'#E6EEF9',desc:'KPIs, statistics, trends, forecasts. Feeds Recharts dashboards across all suites.',usedBy:'Director, Finance, Ops dashboards'},
+  {name:'Search Service',emoji:'🔍',color:'#0F6E56',bg:'#E0F5ED',desc:'Global cross-service search. "Theo" returns Student Theo, Employee Theo, Parent Theo.',usedBy:'ALL services'},
+  {name:'Settings Service',emoji:'⚙️',color:'#5A6080',bg:'#ECEEF5',desc:'System settings, branding, language, currency, academic year. Per-organisation.',usedBy:'ALL services'},
+  {name:'Workflow Service',emoji:'🔀',color:'#3C3489',bg:'#ECEAFF',desc:'Request → Review → Approve → Complete flows. Budget, Procurement, Leave, Payroll all use this.',usedBy:'Finance, HR, Operations'},
+  {name:'Communication Service',emoji:'💬',color:'#993C1D',bg:'#FAEAE5',desc:'Internal chat, comments, discussion groups, announcements. Staff messaging across departments.',usedBy:'Education, HR, Communication'},
+  {name:'Document Service',emoji:'📄',color:'#712B13',bg:'#FAEAE5',desc:'Contracts, policies, circulars, meeting minutes. Digital signatures and version control.',usedBy:'HR, Ops, Communication, Smart'},
+  {name:'API Gateway',emoji:'🌐',color:'#000435',bg:'#E8EBF7',desc:'All requests pass through here. Auth validation, rate limiting, routing, logging.',usedBy:'ALL — entry point for the frontend'}
+];
+
+const ROLES = [
+  {level:'Platform',badge:'badge-amber',role:'Super Administrator',modules:'Everything — all organizations',scope:'ALL',cannot:'N/A'},
+  {level:'Platform',badge:'badge-amber',role:'Organisation Owner',modules:'Own org, subscriptions, module purchase',scope:'ORGANIZATION',cannot:'Other organisations'},
+  {level:'Org Admin',badge:'badge-blue',role:'Organisation Administrator',modules:'HR, Finance, Academics, Inventory, Communication',scope:'ORGANIZATION',cannot:'Platform settings'},
+  {level:'Org Admin',badge:'badge-blue',role:'Operations Manager',modules:'Action Plans, Procurement, Inventory, Assets',scope:'ORGANIZATION',cannot:'Payroll, HR contracts'},
+  {level:'Finance',badge:'badge-green',role:'Finance Manager',modules:'Budget, Finance, Payroll, Reports',scope:'ORGANIZATION',cannot:'—'},
+  {level:'Finance',badge:'badge-green',role:'Accountant',modules:'Student Fees, Invoices, Receipts, Expenses',scope:'ORGANIZATION',cannot:'Delete budgets, change payroll settings'},
+  {level:'Finance',badge:'badge-green',role:'Payroll Officer',modules:'Payroll, Salary Advances, Payslips',scope:'ORGANIZATION',cannot:'Budget management, student fees'},
+  {level:'HR',badge:'badge-teal',role:'HR Manager',modules:'Employees, Contracts, Leave, Performance',scope:'ORGANIZATION',cannot:'Finance, payroll'},
+  {level:'HR',badge:'badge-teal',role:'Leave Officer',modules:'Leave Requests, Leave Approvals',scope:'DEPARTMENT',cannot:'Payroll, HR management'},
+  {level:'HR',badge:'badge-teal',role:'Attendance Officer',modules:'Staff Attendance, Reports',scope:'DEPARTMENT',cannot:'Leave, contracts'},
+  {level:'School',badge:'badge-purple',role:'School Director',modules:'Academics, Teachers, Students, Finance Overview',scope:'ORGANIZATION',cannot:'Platform settings'},
+  {level:'School',badge:'badge-purple',role:'Deputy Director Academics',modules:'Exams, Timetable, Academic Reports, Teachers',scope:'ORGANIZATION',cannot:'Finance, HR'},
+  {level:'School',badge:'badge-purple',role:'Head of Department (HOD)',modules:'Dept Reports, Teachers, Subjects',scope:'DEPARTMENT',cannot:'Other departments'},
+  {level:'School',badge:'badge-purple',role:'Teacher',modules:'Attendance, Marks Entry, Timetable, Assignments',scope:'SELF',cannot:'Payroll, Budget, HR'},
+  {level:'School',badge:'badge-purple',role:'Registrar',modules:'Student Registration, Transfers, Promotion',scope:'ORGANIZATION',cannot:'Finance, HR'},
+  {level:'School',badge:'badge-purple',role:'Librarian',modules:'Books, Borrowing, Returns',scope:'ORGANIZATION',cannot:'Academics, Finance'},
+  {level:'School',badge:'badge-purple',role:'Canteen Manager',modules:'Meals, Food Inventory, Meal Reports',scope:'ORGANIZATION',cannot:'Academics, HR'},
+  {level:'School',badge:'badge-purple',role:'Transport Manager',modules:'Buses, Routes, Drivers',scope:'ORGANIZATION',cannot:'Academics, Finance'},
+  {level:'School',badge:'badge-purple',role:'RFID Officer',modules:'Smart Cards, RFID Attendance, Access Control',scope:'ORGANIZATION',cannot:'Academic data, Finance'},
+  {level:'Stakeholders',badge:'badge-gray',role:'Parent',modules:'Child Attendance, Reports, Fee Status, Notifications',scope:'SELF',cannot:'Other students\' data'},
+  {level:'Stakeholders',badge:'badge-gray',role:'Student',modules:'Timetable, Results, Assignments, Attendance',scope:'SELF',cannot:'Other students, admin'},
+  {level:'Procurement',badge:'badge-coral',role:'Procurement Manager',modules:'Purchase Requests, Requisitions, Purchase Orders',scope:'ORGANIZATION',cannot:'Finance budget'},
+  {level:'Procurement',badge:'badge-coral',role:'Store Keeper',modules:'Stock In, Stock Out, Inventory Reports',scope:'ORGANIZATION',cannot:'Purchase orders'},
+  {level:'Procurement',badge:'badge-coral',role:'Asset Manager',modules:'Assets, Maintenance, Asset Reports',scope:'ORGANIZATION',cannot:'Procurement, Finance'},
+  {level:'Communication',badge:'badge-blue',role:'Communication Officer',modules:'Announcements, SMS Campaigns, Circulars',scope:'ORGANIZATION',cannot:'Academic, Finance data'},
+  {level:'Marketplace',badge:'badge-pink',role:'Vendor',modules:'Manage Products, Orders, Inventory',scope:'SELF',cannot:'Other vendors'},
+  {level:'Marketplace',badge:'badge-pink',role:'Customer',modules:'Browse Products, Purchase',scope:'SELF',cannot:'Vendor management'}
+];
+
+const SCOPES = [
+  {label:'SELF',pct:15,note:'Own records only (Teacher sees own marks)'},
+  {label:'DEPARTMENT',pct:35,note:'All records in own department (HOD)'},
+  {label:'BRANCH',pct:55,note:'Assigned section (Head of Studies — O Level)'},
+  {label:'ORGANIZATION',pct:80,note:'Entire school or org (Director, Finance Manager)'},
+  {label:'ALL',pct:100,note:'All organisations (Super Admin only)'}
+];
+
+const STACK = [
+  {name:'Frontend — Core',emoji:'⚛️',color:'#3B8BD4',bg:'#E6EEF9',chips:['React 18','TypeScript','Vite','React Router v6']},
+  {name:'Frontend — UI & Styling',emoji:'🎨',color:'#1D9E75',bg:'#E0F5ED',chips:['Tailwind CSS','Shadcn/ui','Lucide React','CSS Variables']},
+  {name:'Frontend — Data & Charts',emoji:'📊',color:'#7F77DD',bg:'#ECEAFF',chips:['React Query (TanStack)','Recharts','Zustand','React Hook Form + Zod']},
+  {name:'Design System',emoji:'🖌️',color:'#FCB038',bg:'#FFF3D0',chips:['Amber #FCB038','Navy #000435','Inter / Montserrat','Shared packages/ui library']},
+  {name:'Backend — Runtime & Framework',emoji:'🟢',color:'#1D9E75',bg:'#E0F5ED',chips:['Node.js LTS','Express.js','TypeScript','ts-node-dev']},
+  {name:'Backend — Database & ORM',emoji:'🗄️',color:'#3B8BD4',bg:'#E6EEF9',chips:['MySQL 8','Prisma ORM','Redis (queue/cache)','DB per tenant schema']},
+  {name:'Backend — Auth & Security',emoji:'🔒',color:'#D4537E',bg:'#F5E0EE',chips:['JWT (access + refresh)','bcrypt','Helmet.js','CORS middleware']},
+  {name:'Background Jobs',emoji:'⚡',color:'#7F77DD',bg:'#ECEAFF',chips:['BullMQ','Redis','Scheduled payroll runs','Notification queue']},
+  {name:'External Integrations',emoji:'🌍',color:'#0B7A6B',bg:'#E0F4F1',chips:["Africa's Talking SMS","Nodemailer (email)","RFID hardware API",'S3 / local file storage']},
+  {name:'Infrastructure & DevOps',emoji:'🖥️',color:'#5A6080',bg:'#ECEEF5',chips:['Linux VPS (mopas-srv-01)','PM2 process manager','Nginx reverse proxy','Certbot / Let\'s Encrypt']},
+  {name:'Reports & Exports',emoji:'📄',color:'#854F0B',bg:'#FFF3D0',chips:['PDFKit / Puppeteer','ExcelJS (XLSX)','CSV streams','Shared Reporting Service']},
+  {name:'Deployment',emoji:'🚀',color:'#000435',bg:'#E8EBF7',chips:['GitHub → deploy script','PM2 cluster mode','Nginx multi-domain','Certbot SSL auto-renew']}
+];
+
+const FLOW_STEPS = [
+  {title:'Client sends request',desc:'React frontend calls <code class="inline">POST /api/v1/students</code> with <code class="inline">Authorization: Bearer &lt;jwt&gt;</code> header.'},
+  {title:'API Gateway receives',desc:'Rate limiting, request logging, and route resolution to the correct microservice (Education, Finance, HR…).'},
+  {title:'Auth middleware validates JWT',desc:'Verifies token signature and expiry. Decodes user context — role, department, data scope, subscribed modules — and attaches to <code class="inline">req.user</code>.'},
+  {title:'Authorization middleware checks',desc:'Does <code class="inline">req.user.permissions</code> include <code class="inline">students.create</code>? Is <code class="inline">academics</code> in <code class="inline">req.user.subscribedModules</code>? If no → 403.'},
+  {title:'Business service handles logic',desc:'Education Service controller runs. All DB queries are auto-scoped by <code class="inline">organization_id</code> and the user\'s <code class="inline">data_scope</code> field.'},
+  {title:'Side-effects delegated',desc:'Notification Service queues an SMS. File Service handles any uploads. Audit Log Service records the action with user + timestamp.'},
+  {title:'Response returned',desc:'JSON response sent to client. React Query cache is invalidated. UI re-renders with fresh data.'}
+];
+
+/* ── Render helpers ── */
+function renderSuites() {
+  const container = document.getElementById('suites-container');
+  let html = '';
+  SUITES.forEach(suite => {
+    html += `<div id="suite-${suite.id}" style="margin-bottom:32px">
+      <div class="suite-header" style="border-left:3px solid ${suite.color}">
+        <div class="suite-accent" style="background:${suite.bg};font-size:18px">${suite.emoji}</div>
+        <div style="flex:1">
+          <div class="suite-name">${suite.name}</div>
+          <div class="suite-desc">${suite.desc}</div>
+        </div>
+        <span class="badge ${suite.badge}">${suite.modules.length} modules</span>
+      </div>`;
+    suite.modules.forEach((m, i) => {
+      const id = `mod-${suite.id}-${i}`;
+      html += `<div class="module">
+        <div class="module-head" onclick="toggleMod('${id}')">
+          <div class="module-head-left">
+            <div class="module-num" style="background:${suite.bg};color:${suite.color}">${i+1}</div>
+            <div class="module-name">${m.name}</div>
+            <span class="badge badge-gray" style="margin-left:4px">${m.features.length} features</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="badge badge-gray">${m.roles.length} roles</span>
+            <span class="module-chevron" id="chev-${id}">▼</span>
+          </div>
+        </div>
+        <div class="module-body" id="${id}">
+          <div class="module-grid">
+            <div>
+              <div class="module-sect-label">Users / Roles</div>
+              <div class="feat-wrap">${m.roles.map(r=>`<span class="badge badge-amber">${r}</span>`).join('')}</div>
+              <div class="module-sect-label" style="margin-top:12px">Shared Services</div>
+              <div class="feat-wrap">${m.shared.map(s=>`<span class="shared-tag">${s}</span>`).join('')}</div>
+            </div>
+            <div>
+              <div class="module-sect-label">Features</div>
+              <div class="feat-wrap">${m.features.map(f=>`<span class="feat-tag">${f}</span>`).join('')}</div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  container.innerHTML = html;
+}
+
+function renderServices() {
+  const container = document.getElementById('services-container');
+  container.innerHTML = SERVICES.map(s => `
+    <div class="svc-card">
+      <div class="svc-icon-wrap" style="background:${s.bg}">${s.emoji}</div>
+      <div class="svc-name">${s.name}</div>
+      <div class="svc-desc">${s.desc}</div>
+      <div class="svc-used">Used by: ${s.usedBy}</div>
+    </div>
+  `).join('');
+}
+
+function renderRoles() {
+  const tbody = document.getElementById('role-tbody');
+  const scopeColor = {SELF:'#D85A30',DEPARTMENT:'#7F77DD',BRANCH:'#3B8BD4',ORGANIZATION:'#1D9E75',ALL:'#FCB038'};
+  tbody.innerHTML = ROLES.map(r => `
+    <tr>
+      <td><span class="badge ${r.badge}">${r.level}</span></td>
+      <td style="font-weight:500;color:var(--navy)">${r.role}</td>
+      <td style="color:var(--gray-600)">${r.modules}</td>
+      <td><span style="font-size:11px;font-weight:600;color:${scopeColor[r.scope]||'#666'}">${r.scope}</span></td>
+      <td style="color:var(--gray-400);font-size:12px">${r.cannot}</td>
+    </tr>
+  `).join('');
+}
+
+function renderScopes() {
+  const el = document.getElementById('scope-viz');
+  el.innerHTML = SCOPES.map(s => `
+    <div class="scope-row">
+      <div class="scope-label">${s.label}</div>
+      <div class="scope-bar-wrap"><div class="scope-bar" style="width:${s.pct}%"></div></div>
+      <div class="scope-note">${s.note}</div>
+    </div>
+  `).join('');
+}
+
+function renderStack() {
+  const container = document.getElementById('stack-container');
+  container.innerHTML = STACK.map(s => `
+    <div class="stack-layer">
+      <div class="stack-icon" style="background:${s.bg};font-size:18px">${s.emoji}</div>
+      <div class="stack-info">
+        <div class="stack-name">${s.name}</div>
+        <div class="stack-chips">${s.chips.map(c=>`<span class="stack-chip">${c}</span>`).join('')}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderFlow() {
+  const el = document.getElementById('flow-timeline');
+  el.innerHTML = FLOW_STEPS.map((s,i) => `
+    <div class="tl-step">
+      <div class="tl-dot">${i+1}</div>
+      <div class="tl-title">${s.title}</div>
+      <div class="tl-desc">${s.desc}</div>
+    </div>
+  `).join('');
+}
+
+function toggleMod(id) {
+  const body = document.getElementById(id);
+  const chev = document.getElementById('chev-'+id);
+  const open = body.classList.toggle('open');
+  if(chev) chev.classList.toggle('open', open);
+}
+
+function show(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const sec = document.getElementById('sec-'+id);
+  if(sec) sec.classList.add('active');
+  const navs = document.querySelectorAll('.nav-item');
+  navs.forEach(n => { if(n.getAttribute('onclick') && n.getAttribute('onclick').includes("'"+id+"'")) n.classList.add('active'); });
+  document.querySelector('.sidebar').classList.remove('open');
+  window.scrollTo(0,0);
+}
+
+function scrollToSuite(id) {
+  setTimeout(() => {
+    const el = document.getElementById('suite-'+id);
+    if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+  }, 100);
+}
+
+// Init
+renderSuites();
+renderServices();
+renderRoles();
+renderScopes();
+renderStack();
+renderFlow();
+</script>
+</body>
+</html>
